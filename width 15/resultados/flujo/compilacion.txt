@@ -1,0 +1,1 @@
+g++ -Wall fundamental_diagram_hamarat.cpp -o calculo -lm

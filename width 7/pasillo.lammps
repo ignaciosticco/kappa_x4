@@ -1,0 +1,107 @@
+# Pedestrians in a 2D square box
+
+variable imax equal 1
+variable i loop 1 ${imax}
+label start_of_loop1
+print "ITERATION i = $i"    #Loop de velocidad de deseo
+
+variable jmax equal 10
+variable j loop 1 ${jmax}
+label start_of_loop2
+print "ITERATION j = $j"    # Loop de densidad
+
+########### Number of pedestrians and room features ############
+
+## See blueprint of the room at the end of the script ##
+variable width equal 7.0 
+variable side equal 28
+variable density equal $j
+
+variable x0 equal 0.0
+variable x1 equal v_side
+
+variable y0 equal 0.0
+variable y1 equal v_width  
+
+variable z1 equal -1
+variable z2 equal 1
+
+
+####################LOOPS#########################################
+
+dimension       2
+boundary        p p p
+
+units           si
+atom_style      sphere
+  
+region          reservoir block ${x0} ${x1} ${y0} ${y1} ${z1} ${z2} units box
+#region			sample block 4 24 5 17 ${z1} ${z2} units box
+
+
+create_box      2 reservoir
+#create_atoms   1 region reservoir
+read_data	    ci_pasillo_7m_density_${density}.txt add append
+set             atom * mass 70.0
+set             atom * diameter 0.46
+
+velocity        all create 1e23 $j dist gaussian	
+comm_modify     vel yes           
+
+
+variable		vd equal $i
+variable		s equal count(all,reservoir)
+
+##################################################################
+# USER-PANIC PACKAGES
+##################################################################
+
+pair_style   panic/table/diam/distribution linear 5000 ${vd}
+pair_coeff   * * tabla_pasillo_7m.table PP 0.88
+
+##################################################################
+
+group 		  samp dynamic all region reservoir
+
+
+fix           1 all nve/limit 0.001
+thermo        2000
+thermo_style  custom step v_density # tiene que haber un thermo antes, "step" es necesario
+
+dump	    1  samp custom 5000 config_density${density}_width${width} x y vx vy
+
+#dump        6 all movie 100 pasillo_${density}_vd_${vd}.mp4 type type &
+#            axes no 0.8 0.02 view 0 0 zoom 1 adiam 0.46 center s 0.4 0.5 0.5
+
+atom_modify   sort 0 0.0
+timestep      0.0001
+
+variable nmax equal 2000000
+variable n loop ${nmax}
+label start_of_loop3
+
+run           500
+#delete_atoms  region outside compress no
+variable      t equal 0.05*$n
+
+#print "$s $j" append flow_$N_vd_${vd}_doorsize_${doorsize}.txt
+
+#if "$n > 100000" then "jump SELF break"
+if "$t > 20" then "jump SELF break"
+next n
+jump SELF start_of_loop3
+
+#	TERMINACION DEL PROCESO
+
+label break
+
+#print "${vd} $j $t $s $N" append evacuation_time_doorsize_${doorsize}.txt
+
+clear
+variable n delete
+next j
+jump SELF start_of_loop2
+
+clear
+next i
+jump SELF start_of_loop1

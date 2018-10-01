@@ -1,0 +1,3 @@
+#!/bin/bash
+
+mpirun lmp_mpi -i pasillo.lammps -log none #-screen none
